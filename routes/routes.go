@@ -17,14 +17,12 @@ func Run() error {
 	// ========================
 	// 🔓 API PÚBLICA
 	// ========================
-	mux.HandleFunc("/login", auth.LoginHandler)
+	mux.HandleFunc("/api/login", auth.LoginHandler)
 
 	// ========================
 	// 🔐 API USER
 	// ========================
 	userRoutes := http.NewServeMux()
-
-	userRoutes.HandleFunc("/profile", handlers.ProfileHandler)
 
 	userRoutes.HandleFunc("/users", handlers.ProfileHandler)
 	userRoutes.HandleFunc("/users/", handlers.ProfileHandler)
@@ -55,7 +53,9 @@ func Run() error {
 	adminRoutes.HandleFunc("/users", handlers.AdminProfileHandler)
 	adminRoutes.HandleFunc("/empresas", handlers.AdminEmpresasHandler)
 	adminRoutes.HandleFunc("/reunioes", handlers.AdminReunioesHandler)
-	adminRoutes.HandleFunc("/reunioes", handlers.AdminPostsHandler)
+	adminRoutes.HandleFunc("/posts", handlers.AdminPostsHandler)
+	adminRoutes.HandleFunc("/ciclos", handlers.CiclosHandler)
+	adminRoutes.HandleFunc("/decisoes", handlers.DecisoesHandler)
 
 	mux.Handle("/api/admin/",
 		auth.AuthMiddleware(

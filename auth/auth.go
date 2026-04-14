@@ -20,14 +20,14 @@ const UserIDKey contextKey = "user_id"
 var secretKey []byte
 
 func init() {
-	secretKey = []byte(os.Getenv("key"))
+	secretKey = []byte(os.Getenv("KEY"))
 }
 
 func generateToken(user entities.User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": user.ID,
-		"name":    user.Name,
-		"exp":     time.Now().Add(time.Hour * 2).Unix(),
+		"user_id":    user.ID,
+		"name":       user.Name,
+		"exp":        time.Now().Add(time.Hour * 2).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secretKey)
@@ -54,9 +54,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var u entities.User
 	err := repository.DB.QueryRow(
-		`SELECT id, name, login, password, empresa_id FROM users WHERE login=$1 AND password=$2`,
+		`SELECT id, name FROM users WHERE login=$1 AND password=$2`,
 		creds.Login, creds.Password,
-	).Scan(&u.ID, &u.Name, &u.Login, &u.Password, &u.EmpresaID)
+	).Scan(&u.ID, &u.Name)
 	if err != nil {
 		http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
 		return
