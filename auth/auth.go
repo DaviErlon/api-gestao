@@ -11,6 +11,7 @@ import (
 	"github.com/DaviErlon/api-gestao/entities"
 	"github.com/DaviErlon/api-gestao/repository"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type contextKey string
@@ -23,12 +24,29 @@ func init() {
 	secretKey = []byte(os.Getenv("KEY"))
 }
 
+// ---------------------------------------------------------------------------
+// Password
+// ---------------------------------------------------------------------------
+
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hash), err
+}
+
+func CheckPassword(hash, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+// ---------------------------------------------------------------------------
+// JWT
+// ---------------------------------------------------------------------------
 func generateToken(user entities.User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":    user.ID,
-		"name":       user.Name,
-		"exp":        time.Now().Add(time.Hour * 2).Unix(),
+		"user_id": user.ID,
+		"name":    user.Name,
+		"exp":     time.Now().Add(time.Hour * 2).Unix(),
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secretKey)
 }
@@ -42,22 +60,35 @@ func validateToken(tokenStr string) (*jwt.Token, error) {
 	})
 }
 
+// ---------------------------------------------------------------------------
+// Handlers
+// ---------------------------------------------------------------------------
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var creds struct {
 		Login    string `json:"login"`
 		Password string `json:"password"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		http.Error(w, "JSON inválido", http.StatusBadRequest)
 		return
 	}
 
 	var u entities.User
+	var hashedPassword string
+
 	err := repository.DB.QueryRow(
-		`SELECT id, name FROM users WHERE login=$1 AND password=$2`,
-		creds.Login, creds.Password,
-	).Scan(&u.ID, &u.Name)
+		`SELECT id, name, password FROM users WHERE login=$1`,
+		creds.Login,
+	).Scan(&u.ID, &u.Name, &hashedPassword)
+
 	if err != nil {
+		http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
+		return
+	}
+
+	// 🔐 compara senha com hash
+	if CheckPassword(hashedPassword, creds.Password) != nil {
 		http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
 		return
 	}
@@ -73,6 +104,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"token": tokenStr,
 	})
 }
+
+func TestHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +139,6 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// user_id vem como float64 no MapClaims
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {
 			http.Error(w, "Token inválido", http.StatusUnauthorized)

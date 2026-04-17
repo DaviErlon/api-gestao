@@ -28,12 +28,6 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AdminProfileHandler - rotas exclusivas para admin
-// GET    /users       - lista todos
-// GET    /users/{id}  - busca um
-// POST   /users       - cria usuário
-// PUT    /users/{id}  - atualiza qualquer usuário (todos os campos)
-// DELETE /users/{id}  - remove qualquer usuário
 func AdminProfileHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/users")
 	id = strings.Trim(id, "/")
@@ -54,8 +48,6 @@ func AdminProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// updateOwnUser - usuário só pode alterar o próprio registro.
-// Campos permitidos: name, password. login e empresa_id são bloqueados.
 func updateOwnUser(w http.ResponseWriter, r *http.Request, rawID string) {
 	targetID, err := strconv.Atoi(rawID)
 	if err != nil {
@@ -164,7 +156,6 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(u)
 }
 
-// updateUser — versão admin: pode alterar qualquer campo de qualquer usuário
 func updateUser(w http.ResponseWriter, r *http.Request, rawID string) {
 	id, err := strconv.Atoi(rawID)
 	if err != nil {

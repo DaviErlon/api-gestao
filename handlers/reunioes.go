@@ -1,32 +1,181 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/DaviErlon/api-gestao/auth"
+	"github.com/DaviErlon/api-gestao/email"
 	"github.com/DaviErlon/api-gestao/entities"
 	"github.com/DaviErlon/api-gestao/repository"
 )
 
-// ReunioesHandler — rotas para usuário autenticado comum
-// GET  /reunioes       → lista todas
-// GET  /reunioes/{id}  → busca uma
-// POST /reunioes       → cria (author_id preenchido pelo contexto)
-// PUT  /reunioes/{id}  → atualiza apenas a própria reunião
-// DELETE /reunioes/{id}→ deleta apenas a própria reunião
+// ---------------------------------------------------------------------------
+// Scheduler de e-mails
+// ---------------------------------------------------------------------------
+
+type emailJob struct {
+	cancel context.CancelFunc
+}
+
+var (
+	emailJobs   = make(map[int]*emailJob)
+	emailJobsMu sync.Mutex
+)
+
+func InitReunioesScheduler() {
+	rows, err := repository.DB.Query(`
+		SELECT r.id, r.titulo, r.inicio, c.empresa_id
+		FROM reunioes r
+		JOIN ciclos c ON c.id = r.ciclo_id
+	`)
+	if err != nil {
+		log.Printf("[init] erro ao carregar reuniões: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id, empresaID int
+		var titulo string
+		var inicio time.Time
+
+		if err := rows.Scan(&id, &titulo, &inicio, &empresaID); err != nil {
+			continue
+		}
+
+		scheduleEmailJob(id, empresaID, titulo, inicio)
+	}
+}
+
+func scheduleEmailJob(reuniaoID, empresaID int, titulo string, inicio time.Time) {
+	cancelEmailJob(reuniaoID)
+
+	delay := time.Until(inicio.Add(-20 * time.Minute))
+	ctx, cancel := context.WithCancel(context.Background())
+
+	emailJobsMu.Lock()
+	emailJobs[reuniaoID] = &emailJob{cancel: cancel}
+	emailJobsMu.Unlock()
+
+	go func() {
+		defer func() {
+			emailJobsMu.Lock()
+			delete(emailJobs, reuniaoID)
+			emailJobsMu.Unlock()
+		}()
+
+		if delay <= 0 {
+			sendEmailToEmpresa(empresaID, titulo, inicio)
+			return
+		}
+
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+			sendEmailToEmpresa(empresaID, titulo, inicio)
+		case <-ctx.Done():
+			return
+		}
+	}()
+}
+
+func cancelEmailJob(reuniaoID int) {
+	emailJobsMu.Lock()
+	defer emailJobsMu.Unlock()
+
+	if job, ok := emailJobs[reuniaoID]; ok {
+		job.cancel()
+		delete(emailJobs, reuniaoID)
+	}
+}
+
+func sendEmailToEmpresa(empresaID int, titulo string, inicio time.Time) {
+	rows, err := repository.DB.Query(
+		`SELECT name, login FROM users WHERE empresa_id=$1`, empresaID,
+	)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	dataHora := inicio.Format("02/01/2006 15:04")
+
+	for rows.Next() {
+		var name, login string
+		rows.Scan(&name, &login)
+
+		subject := fmt.Sprintf("Reunião: %s", titulo)
+		body := fmt.Sprintf("Olá %s, reunião %s às %s", name, titulo, dataHora)
+
+		email.EMAIL.Send(login, subject, body)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+func ultimoCicloDaEmpresa(empresaID int) (int, error) {
+	var cicloID int
+
+	err := repository.DB.QueryRow(`
+		SELECT id
+		FROM ciclos
+		WHERE empresa_id = $1
+		ORDER BY rodada DESC
+		LIMIT 1
+	`, empresaID).Scan(&cicloID)
+
+	return cicloID, err
+}
+
+func callerID(r *http.Request) (int, bool) {
+	id, ok := r.Context().Value(auth.UserIDKey).(int)
+	return id, ok
+}
+
+func empresaDaReuniao(reuniaoID int) (int, error) {
+	var empresaID int
+	err := repository.DB.QueryRow(
+		`SELECT c.empresa_id
+		 FROM reunioes r
+		 JOIN ciclos c ON c.id = r.ciclo_id
+		 WHERE r.id=$1`, reuniaoID,
+	).Scan(&empresaID)
+	return empresaID, err
+}
+
+func empresaDoCiclo(cicloID int) (int, error) {
+	var empresaID int
+	err := repository.DB.QueryRow(
+		`SELECT empresa_id FROM ciclos WHERE id=$1`, cicloID,
+	).Scan(&empresaID)
+	return empresaID, err
+}
+
+// ---------------------------------------------------------------------------
+// ROUTERS
+// ---------------------------------------------------------------------------
+
 func ReunioesHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/reunioes")
-	id = strings.Trim(id, "/")
+	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/reunioes"), "/")
 
 	switch {
 	case r.Method == http.MethodGet && id == "":
-		listReunioes(w, r)
+		listReunioesOwn(w, r)
 	case r.Method == http.MethodGet && id != "":
-		getReuniao(w, r, id)
+		getReuniaoOwn(w, r, id)
 	case r.Method == http.MethodPost:
 		createReuniao(w, r)
 	case r.Method == http.MethodPut && id != "":
@@ -38,14 +187,8 @@ func ReunioesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AdminReunioesHandler — rotas exclusivas para admin
-// GET    /reunioes       → lista todas
-// GET    /reunioes/{id}  → busca uma
-// PUT    /reunioes/{id}  → atualiza qualquer reunião
-// DELETE /reunioes/{id}  → deleta qualquer reunião
 func AdminReunioesHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/reunioes")
-	id = strings.Trim(id, "/")
+	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/reunioes"), "/")
 
 	switch {
 	case r.Method == http.MethodGet && id == "":
@@ -61,187 +204,191 @@ func AdminReunioesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listReunioes(w http.ResponseWriter, r *http.Request) {
-	rows, err := repository.DB.Query(
-		`SELECT id, ciclo_id, author_id, titulo, descricao, inicio, duracao, aberta FROM reunioes`,
-	)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// ---------------------------------------------------------------------------
+// Com filtro
+// ---------------------------------------------------------------------------
+
+func listReunioesOwn(w http.ResponseWriter, r *http.Request) {
+	empresaID, _ := empresaIDFromContext(r)
+
+	rows, _ := repository.DB.Query(`
+		SELECT r.id, r.ciclo_id, r.author_id, r.titulo, r.descricao, r.inicio, r.duracao
+		FROM reunioes r
+		JOIN ciclos c ON c.id=r.ciclo_id
+		WHERE c.empresa_id=$1`, empresaID)
+
 	defer rows.Close()
 
-	var list []entities.Reuniao
-	for rows.Next() {
-		var re entities.Reuniao
-		if err := rows.Scan(&re.ID, &re.CicloID, &re.AuthorID, &re.Titulo, &re.Descricao, &re.Inicio, &re.Duracao, &re.Aberta); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		list = append(list, re)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(list)
+	writeList(w, rows)
 }
 
-func getReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
-	id, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
+func getReuniaoOwn(w http.ResponseWriter, r *http.Request, rawID string) {
+	id, _ := strconv.Atoi(rawID)
+
+	callerEmpresa, _ := empresaIDFromContext(r)
+	reuniaoEmpresa, _ := empresaDaReuniao(id)
+
+	if callerEmpresa != reuniaoEmpresa {
+		http.Error(w, "acesso negado", http.StatusForbidden)
 		return
 	}
-	var re entities.Reuniao
-	err = repository.DB.QueryRow(
-		`SELECT id, ciclo_id, author_id, titulo, descricao, inicio, duracao, aberta FROM reunioes WHERE id=$1`, id,
-	).Scan(&re.ID, &re.CicloID, &re.AuthorID, &re.Titulo, &re.Descricao, &re.Inicio, &re.Duracao, &re.Aberta)
-	if err == sql.ErrNoRows {
-		http.Error(w, "reunião não encontrada", http.StatusNotFound)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(re)
+
+	getReuniao(w, r, rawID)
 }
 
-// createReuniao — author_id é sempre o usuário logado, ignorando qualquer valor enviado no body
 func createReuniao(w http.ResponseWriter, r *http.Request) {
-	callerID, ok := r.Context().Value(auth.UserIDKey).(int)
-	if !ok {
-		http.Error(w, "Não autenticado", http.StatusUnauthorized)
-		return
-	}
-
 	var re entities.Reuniao
 	if err := json.NewDecoder(r.Body).Decode(&re); err != nil {
 		http.Error(w, "corpo inválido", http.StatusBadRequest)
 		return
 	}
-	re.AuthorID = callerID
 
-	err := repository.DB.QueryRow(
-		`INSERT INTO reunioes (ciclo_id, author_id, titulo, descricao, inicio, duracao, aberta)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-		re.CicloID, re.AuthorID, re.Titulo, re.Descricao, re.Inicio, re.Duracao, re.Aberta,
-	).Scan(&re.ID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(re)
-}
-
-// updateOwnReuniao — usuário só pode alterar reuniões que ele criou
-func updateOwnReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
-	reuniaoID, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
-		return
-	}
-
-	callerID, ok := r.Context().Value(auth.UserIDKey).(int)
+	uid, ok := callerID(r)
 	if !ok {
-		http.Error(w, "Não autenticado", http.StatusUnauthorized)
+		http.Error(w, "não autenticado", http.StatusUnauthorized)
 		return
 	}
 
-	var authorID int
-	err = repository.DB.QueryRow(`SELECT author_id FROM reunioes WHERE id=$1`, reuniaoID).Scan(&authorID)
+	empresaID, err := empresaIDFromContext(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	cicloID, err := ultimoCicloDaEmpresa(empresaID)
 	if err == sql.ErrNoRows {
-		http.Error(w, "reunião não encontrada", http.StatusNotFound)
+		http.Error(w, "empresa não possui ciclos", http.StatusBadRequest)
 		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if callerID != authorID {
-		http.Error(w, "Acesso negado: você só pode alterar reuniões que criou", http.StatusForbidden)
+	re.CicloID = cicloID
+	re.AuthorID = uid
+
+	err = repository.DB.QueryRow(
+		`INSERT INTO reunioes (ciclo_id, author_id, titulo, descricao, inicio, duracao)
+		 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+		re.CicloID, re.AuthorID, re.Titulo, re.Descricao, re.Inicio, re.Duracao,
+	).Scan(&re.ID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	scheduleEmailJob(re.ID, empresaID, re.Titulo, re.Inicio)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(re)
+}
+
+func updateOwnReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
+	id, _ := strconv.Atoi(rawID)
+
+	uid, _ := callerID(r)
+
+	var authorID int
+	repository.DB.QueryRow(`SELECT author_id FROM reunioes WHERE id=$1`, id).Scan(&authorID)
+
+	if uid != authorID {
+		http.Error(w, "acesso negado", http.StatusForbidden)
 		return
 	}
 
 	updateReuniao(w, r, rawID)
 }
 
-// deleteOwnReuniao — usuário só pode deletar reuniões que ele criou
 func deleteOwnReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
-	reuniaoID, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
-		return
-	}
+	id, _ := strconv.Atoi(rawID)
 
-	callerID, ok := r.Context().Value(auth.UserIDKey).(int)
-	if !ok {
-		http.Error(w, "Não autenticado", http.StatusUnauthorized)
-		return
-	}
+	uid, _ := callerID(r)
 
 	var authorID int
-	err = repository.DB.QueryRow(`SELECT author_id FROM reunioes WHERE id=$1`, reuniaoID).Scan(&authorID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "reunião não encontrada", http.StatusNotFound)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	repository.DB.QueryRow(`SELECT author_id FROM reunioes WHERE id=$1`, id).Scan(&authorID)
 
-	if callerID != authorID {
-		http.Error(w, "Acesso negado: você só pode deletar reuniões que criou", http.StatusForbidden)
+	if uid != authorID {
+		http.Error(w, "acesso negado", http.StatusForbidden)
 		return
 	}
 
 	deleteReuniao(w, r, rawID)
 }
 
-// updateReuniao — versão admin: atualiza qualquer reunião sem verificar authorship
-func updateReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
-	id, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
-		return
-	}
-	var re entities.Reuniao
-	if err := json.NewDecoder(r.Body).Decode(&re); err != nil {
-		http.Error(w, "corpo inválido", http.StatusBadRequest)
-		return
-	}
-	re.ID = id
-	res, err := repository.DB.Exec(
-		`UPDATE reunioes SET ciclo_id=$1, titulo=$2, descricao=$3, inicio=$4, duracao=$5, aberta=$6 WHERE id=$7`,
-		re.CicloID, re.Titulo, re.Descricao, re.Inicio, re.Duracao, re.Aberta, re.ID,
+// ---------------------------------------------------------------------------
+// Sem filtro
+// ---------------------------------------------------------------------------
+
+func listReunioes(w http.ResponseWriter, r *http.Request) {
+	rows, _ := repository.DB.Query(
+		`SELECT id, ciclo_id, author_id, titulo, descricao, inicio, duracao FROM reunioes`,
 	)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	defer rows.Close()
+
+	writeList(w, rows)
+}
+
+func getReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
+	id, _ := strconv.Atoi(rawID)
+
+	var re entities.Reuniao
+	err := repository.DB.QueryRow(
+		`SELECT id, ciclo_id, author_id, titulo, descricao, inicio, duracao
+		 FROM reunioes WHERE id=$1`, id,
+	).Scan(&re.ID, &re.CicloID, &re.AuthorID, &re.Titulo, &re.Descricao, &re.Inicio, &re.Duracao)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "não encontrado", http.StatusNotFound)
 		return
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		http.Error(w, "reunião não encontrada", http.StatusNotFound)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(re)
 }
 
-// deleteReuniao — versão admin: deleta qualquer reunião sem verificar authorship
+func updateReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
+	id, _ := strconv.Atoi(rawID)
+
+	var re entities.Reuniao
+	json.NewDecoder(r.Body).Decode(&re)
+	re.ID = id
+
+	repository.DB.Exec(
+		`UPDATE reunioes SET ciclo_id=$1, titulo=$2, descricao=$3, inicio=$4, duracao=$5 WHERE id=$6`,
+		re.CicloID, re.Titulo, re.Descricao, re.Inicio, re.Duracao, re.ID,
+	)
+
+	empresaID, _ := empresaDoCiclo(re.CicloID)
+	scheduleEmailJob(re.ID, empresaID, re.Titulo, re.Inicio)
+
+	json.NewEncoder(w).Encode(re)
+}
+
 func deleteReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
-	id, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
-		return
-	}
-	res, err := repository.DB.Exec(`DELETE FROM reunioes WHERE id=$1`, id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		http.Error(w, "reunião não encontrada", http.StatusNotFound)
-		return
-	}
+	id, _ := strconv.Atoi(rawID)
+
+	cancelEmailJob(id)
+	repository.DB.Exec(`DELETE FROM reunioes WHERE id=$1`, id)
+
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ---------------------------------------------------------------------------
+// UTIL
+// ---------------------------------------------------------------------------
+
+func writeList(w http.ResponseWriter, rows *sql.Rows) {
+	var list []entities.Reuniao
+
+	for rows.Next() {
+		var re entities.Reuniao
+		rows.Scan(
+			&re.ID, &re.CicloID, &re.AuthorID,
+			&re.Titulo, &re.Descricao,
+			&re.Inicio, &re.Duracao,
+		)
+		list = append(list, re)
+	}
+
+	json.NewEncoder(w).Encode(list)
 }

@@ -11,13 +11,25 @@ import (
 
 func Run() error {
 	repository.Connect()
-
+	
+	handlers.InitReunioesScheduler()
+	
 	mux := http.NewServeMux()
 
 	// ========================
 	// 🔓 API PÚBLICA
 	// ========================
 	mux.HandleFunc("/api/login", auth.LoginHandler)
+
+	testRoutes := http.NewServeMux()
+
+	testRoutes.HandleFunc("/test", auth.TestHandler)
+
+	mux.Handle("/api/",
+		auth.AuthMiddleware(
+			http.StripPrefix("/api", testRoutes),
+		),
+	)
 
 	// ========================
 	// 🔐 API USER
@@ -32,6 +44,7 @@ func Run() error {
 
 	userRoutes.HandleFunc("/decisoes", handlers.DecisoesHandler)
 	userRoutes.HandleFunc("/decisoes/", handlers.DecisoesHandler)
+
 
 	userRoutes.HandleFunc("/reunioes", handlers.ReunioesHandler)
 	userRoutes.HandleFunc("/reunioes/", handlers.ReunioesHandler)
