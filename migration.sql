@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS reunioes (
     descricao TEXT,
 
     inicio    TIMESTAMP NOT NULL,
-    duracao   INTERVAL NOT NULL
+    duracao   INTERVAL NOT NULL,
 
     FOREIGN KEY (ciclo_id) REFERENCES ciclos(id) ON DELETE CASCADE,
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE

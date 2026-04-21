@@ -1,0 +1,193 @@
+/* ============================================================
+   dashboard.css — Estilos exclusivos da página de dashboard
+   ============================================================ */
+
+body {
+    overflow-x: hidden;
+}
+
+/* Barra superior */
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 2rem;
+    z-index: 100;
+}
+
+/* Área de perfil */
+.profile-area {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    color: white;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-btn);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 54px;
+    left: 0;
+    bottom: 0;
+    width: 72px;
+    background: white;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+    transition: width 0.2s ease;
+    z-index: 90;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar:hover {
+    width: 200px;
+}
+
+.nav-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: var(--radius-btn);
+    margin: 0 8px;
+    white-space: nowrap;
+}
+
+.nav-item:hover {
+    background: #f0f0ff;
+}
+
+.nav-item.active {
+    background: #e9e9ff;
+    border-left: 3px solid var(--color-primary);
+}
+
+/* Ícones da sidebar */
+.nav-icon {
+    min-width: 28px;
+    display: flex;
+    justify-content: center;
+}
+
+.nav-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--color-primary);
+    stroke-width: 1.8;
+    fill: none;
+}
+
+.nav-item.active .nav-icon svg {
+    stroke: var(--color-primary-dark);
+}
+
+.nav-text {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #2d2d3a;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar:hover .nav-text {
+    opacity: 1;
+}
+
+/* Conteúdo principal */
+.main-content {
+    margin-left: 72px;
+    margin-top: 54px;
+
+    padding: 5rem; /* menos padding = mais espaço útil */
+    padding-inline: 10rem;
+    width: calc(100% - 72px); /* ocupa toda a largura restante */
+
+    min-height: calc(100vh - 54px);
+}
+
+.content-card {
+    background: white;
+    border-radius: var(--radius-card);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+
+    padding: 2rem;
+
+    width: 100%;        /* ocupa tudo */
+    max-width: none;    /* REMOVE a limitação */
+    margin: 0;          /* tira centralização */
+}
+
+.module-title {
+    font-size: 1.8rem;
+    color: var(--color-text-main);
+    margin-bottom: 1rem;
+}
+
+.module-description {
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+    .sidebar {
+        width: 0;
+        display: none;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+}

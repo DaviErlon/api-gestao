@@ -50,12 +50,14 @@ type Decisao struct {
 
 // Post representa a tabela "posts"
 type Post struct {
-	ID       int       `db:"id"        json:"id"`
-	Content  string    `db:"content"   json:"content"`
-	AuthorID int       `db:"author_id" json:"author_id"`
-	Pin      bool      `db:"pin"       json:"pin"`
-	PostedAt time.Time `db:"posted_at" json:"posted_at"`
-	Likes    int       `db:"likes"     json:"likes"`
+	ID         int       `db:"id"        json:"id"`
+	Content    string    `db:"content"   json:"content"`
+	AuthorID   int       `db:"author_id" json:"author_id"`
+	AuthorName string    `json:"author_name"`
+	Pin        bool      `db:"pin"       json:"pin"`
+	PostedAt   time.Time `db:"posted_at" json:"posted_at"`
+	Likes      int       `db:"likes"     json:"likes"`
+	Curtido    bool      `json:"curtido"`
 }
 
 // Reuniao representa a tabela "reunioes"
@@ -70,4 +72,15 @@ type Reuniao struct {
 	Inicio    time.Time     `db:"inicio"    json:"inicio"`
 	Duracao   time.Duration `db:"duracao"   json:"duracao"`
 	Aberta    bool          `db:"aberta"    json:"aberta"`
+}
+
+type Pagination struct {
+	Page     int  `json:"page"`
+	Limit    int  `json:"limit"`
+	HasNext  bool `json:"has_next"`
+}
+
+type PaginatedResponse[T any] struct {
+	Data       []T        `json:"data"`
+	Pagination Pagination `json:"pagination"`
 }

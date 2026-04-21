@@ -1,0 +1,28 @@
+/* ============================================================
+   empresas.css — estilo do módulo de empresas
+   ============================================================ */
+
+.item-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.item-card {
+    background: #ffffff;
+    border: 1px solid #e7e8f1;
+    border-radius: var(--radius-card);
+    padding: 1.5rem;
+    box-shadow: 0 10px 25px rgba(30, 30, 47, 0.05);
+}
+
+.item-card-title {
+    font-size: 1rem;
+    color: var(--color-text-main);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.item-card-meta {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}

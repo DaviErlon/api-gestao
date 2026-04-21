@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -20,16 +21,23 @@ func Connect() {
 		log.Fatal(err)
 	}
 
-	ticker := time.NewTicker(4 * time.Second)
-	defer ticker.Stop()
+	// ⏱ timeout 
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
 
-	for range ticker.C {
-		err := DB.Ping()
+	for {
+		if ctx.Err() != nil {
+			log.Fatal("[db] tempo limite de conexão excedido (8s)")
+		}
+
+		err = DB.PingContext(ctx)
 		if err == nil {
 			log.Println("Conectado ao PostgreSQL com sucesso")
 			return
 		}
 
-		log.Printf("[db] aguardando conexão... erro: %v", err)
+		log.Printf("[db] tentando conectar... erro: %v", err)
+
+		time.Sleep(2 * time.Second)
 	}
 }

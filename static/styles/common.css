@@ -1,0 +1,38 @@
+/* ============================================================
+   common.css — Estilos compartilhados entre todas as páginas
+   ============================================================ */
+
+/* Variáveis de design */
+:root {
+    --color-primary:       #5f5fef;
+    --color-primary-dark:  #3a3ad4;
+    --color-primary-darker:#2b2bb5;
+    --color-bg:            #2c2c2c;
+    --color-grid-line:     rgba(255, 255, 255, 0.08);
+    --color-text-main:     #1e1e2f;
+    --color-text-muted:    #6c6c7a;
+    --color-border:        #e2e2e8;
+    --font-family: 'Segoe UI', system-ui, -apple-system, 'Roboto', 'Helvetica Neue', sans-serif;
+    --radius-card:  24px;
+    --radius-input: 18px;
+    --radius-btn:   40px;
+}
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body base com fundo escuro e grid */
+body {
+    min-height: 100vh;
+    background-color: var(--color-bg);
+    background-image:
+        linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    font-family: var(--font-family);
+    color: var(--color-text-main);
+}

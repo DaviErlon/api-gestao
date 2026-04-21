@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Login </title>
+    <link rel="stylesheet" href="styles/common.css">
+    <link rel="stylesheet" href="styles/login.css">
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-title">Boas-vindas</div>
+        <div class="login-sub">Acesse sua conta</div>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" placeholder="seu@email.com" autocomplete="email">
+            </div>
+
+            <div class="input-group">
+                <label for="senha">Senha</label>
+                <div class="password-wrapper">
+                    <input type="password" id="senha" name="senha" placeholder="••••••••"
+                        autocomplete="current-password">
+                    <button type="button" class="toggle-password" id="toggleSenha" aria-label="Mostrar senha">
+                        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="login-btn" id="btn">Entrar</button>
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+
+    <script src="scripts/login.js"></script>
+</body>
+
+</html>
