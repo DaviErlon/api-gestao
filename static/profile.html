@@ -1,0 +1,47 @@
+<div class="content-card">
+    <div class="module-header">
+        <div class="module-title">Perfil</div>
+    </div>
+
+    <div class="profile-wrapper">
+
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">U</div>
+        </div>
+
+        <form id="profileForm" class="profile-form">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="profileNameInput">
+                </div>
+
+                <div class="form-group">
+                    <label>Login</label>
+                    <input type="text" id="profileLoginInput">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nova senha</label>
+                    <input type="password" id="profilePasswordInput" placeholder="Opcional">
+                </div>
+
+                <div class="form-group">
+                    <label>Senha atual *</label>
+                    <input type="password" id="profileCurrentPassword" required>
+                </div>
+            </div>
+
+            <div class="profile-actions">
+                <button type="submit" id="saveProfileBtn" disabled>Salvar</button>
+            </div>
+
+            <div id="profileMessage" class="message"></div>
+
+        </form>
+
+    </div>
+</div>

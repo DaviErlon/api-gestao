@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DaviErlon/api-gestao/auth"
 	"github.com/DaviErlon/api-gestao/entities"
 	"github.com/DaviErlon/api-gestao/repository"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -21,8 +21,8 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		listUsers(w, r)
 	case r.Method == http.MethodGet && id != "":
 		getUser(w, r, id)
-	case r.Method == http.MethodPut && id != "":
-		updateOwnUser(w, r, id)
+	case r.Method == http.MethodPut:
+		updateOwnUser(w, r)
 	default:
 		http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
 	}
@@ -48,54 +48,93 @@ func AdminProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateOwnUser(w http.ResponseWriter, r *http.Request, rawID string) {
-	targetID, err := strconv.Atoi(rawID)
-	if err != nil {
-		http.Error(w, "ID inválido", http.StatusBadRequest)
-		return
-	}
-
-	callerID, ok := r.Context().Value(auth.UserIDKey).(int)
+func updateOwnUser(w http.ResponseWriter, r *http.Request) {
+	callerID, ok := callerID(r)
 	if !ok {
-		http.Error(w, "Não autenticado", http.StatusUnauthorized)
-		return
-	}
-
-	if callerID != targetID {
-		http.Error(w, "Acesso negado: você só pode alterar o próprio perfil", http.StatusForbidden)
+		http.Error(w, "Não autorizado", http.StatusForbidden)
 		return
 	}
 
 	var body struct {
-		Name     string `json:"name"`
-		Password string `json:"password"`
-		Login    string `json:"login"`
+		Name      *string `json:"name"`
+		Password  *string `json:"password"`
+		Login     *string `json:"login"`
+		CurrSenha string  `json:"curr_password"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "corpo inválido", http.StatusBadRequest)
 		return
 	}
 
-	res, err := repository.DB.Exec(
-		`UPDATE users SET name=$1, password=$2, login=$3 WHERE id=$4`,
-		body.Name, body.Password, body.Login, targetID,
-	)
+	// 🔒 pegar hash atual
+	var hash string
+	err := repository.DB.QueryRow(
+		`SELECT password FROM users WHERE id=$1`,
+		callerID,
+	).Scan(&hash)
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
 		http.Error(w, "usuário não encontrado", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "perfil atualizado"})
+	// 🔐 validar senha
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.CurrSenha)) != nil {
+		http.Error(w, "senha atual inválida", http.StatusUnauthorized)
+		return
+	}
+
+	// 🧠 montar campos dinamicamente (mais limpo)
+	fields := []string{}
+	args := []any{}
+	i := 1
+
+	add := func(field string, value any) {
+		fields = append(fields, field+"=$"+strconv.Itoa(i))
+		args = append(args, value)
+		i++
+	}
+
+	if body.Name != nil {
+		add("name", *body.Name)
+	}
+
+	if body.Login != nil {
+		add("login", *body.Login)
+	}
+
+	if body.Password != nil {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(*body.Password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, "erro ao gerar hash", http.StatusInternalServerError)
+			return
+		}
+		add("password", string(hashed))
+	}
+
+	if len(fields) == 0 {
+		http.Error(w, "nenhum campo para atualizar", http.StatusBadRequest)
+		return
+	}
+
+	query := "UPDATE users SET " + strings.Join(fields, ", ") + " WHERE id=$" + strconv.Itoa(i)
+	args = append(args, callerID)
+
+	_, err = repository.DB.Exec(query, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "perfil atualizado",
+	})
 }
 
 func listUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := repository.DB.Query(
-		`SELECT id, name, login, password, empresa_id FROM users`,
+		`SELECT id, name, login, COALESCE(empresa_id, -1) FROM users`,
 	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,12 +145,13 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	var list []entities.User
 	for rows.Next() {
 		var u entities.User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Login, &u.Password, &u.EmpresaID); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Login, &u.EmpresaID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		list = append(list, u)
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }

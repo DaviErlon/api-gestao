@@ -22,6 +22,12 @@ const modules = {
         script: "/scripts/ciclos.js",
         style: "/styles/ciclos.css",
         init: "initCiclos"
+    },
+    profile: {
+        page: "/profile.html",
+        script: "/scripts/profile.js",
+        style: "/styles/profile.css",
+        init: "initProfile"
     }
 };
 
@@ -86,6 +92,15 @@ async function loadModule(moduleId) {
     });
 }
 
+function setupProfileClick() {
+    const avatar = document.getElementById("userAvatar");
+    if (!avatar) return;
+
+    avatar.addEventListener("click", () => {
+        loadModule("profile");
+    });
+}
+
 function setupSidebar() {
     document.querySelectorAll(".nav-item").forEach(item => {
         item.addEventListener("click", () => {
@@ -117,12 +132,13 @@ function setUserAvatar() {
 
         const avatarDiv = document.getElementById("userAvatar");
         if (avatarDiv) avatarDiv.textContent = nome;
-    } catch (e) {}
+    } catch (e) { }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     setupSidebar();
     setupLogout();
+    setupProfileClick()
     setUserAvatar();
     loadModule("posts");
 });
