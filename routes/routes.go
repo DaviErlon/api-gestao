@@ -44,6 +44,9 @@ func Run() error {
 
 	userRoutes.HandleFunc("/decisoes", handlers.DecisoesHandler)
 	userRoutes.HandleFunc("/decisoes/", handlers.DecisoesHandler)
+	
+	userRoutes.HandleFunc("/ciclos", handlers.CiclosHandler)
+	userRoutes.HandleFunc("/ciclos/", handlers.CiclosHandler)
 
 
 	userRoutes.HandleFunc("/reunioes", handlers.ReunioesHandler)
@@ -67,7 +70,7 @@ func Run() error {
 	adminRoutes.HandleFunc("/empresas", handlers.AdminEmpresasHandler)
 	adminRoutes.HandleFunc("/reunioes", handlers.AdminReunioesHandler)
 	adminRoutes.HandleFunc("/posts", handlers.AdminPostsHandler)
-	adminRoutes.HandleFunc("/ciclos", handlers.CiclosHandler)
+	adminRoutes.HandleFunc("/ciclos", handlers.AdminCiclosHandler)
 	adminRoutes.HandleFunc("/decisoes", handlers.DecisoesHandler)
 
 	mux.Handle("/api/admin/",

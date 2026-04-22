@@ -1,7 +1,7 @@
 <div class="content-card">
     <div class="module-header">
         <div class="module-title">Posts</div>
-        <button id="createPostBtn">Criar Post</button>
+        <button id="createPostBtn" class="module-btn">Criar Post</button>
     </div>
 
     <div id="postsContainer"></div>
@@ -9,13 +9,14 @@
     <div id="pagination" class="pagination"></div>
 </div>
 
-<div id="postModal" class="post-modal hidden">
-    <div class="post-modal-card">
+<div id="postModal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3>Criar Post</h3>
         <textarea id="postContent" placeholder="Escreva seu post..."></textarea>
 
-        <div class="post-modal-actions">
-            <button class="post-modal-cancel" id="cancelPost">Cancelar</button>
-            <button class="post-modal-submit" id="submitPost">Publicar</button>
+        <div class="modal-actions">
+            <button class="modal-cancel" id="cancelPost">Cancelar</button>
+            <button class="modal-submit" id="submitPost">Publicar</button>
         </div>
     </div>
 </div>

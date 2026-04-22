@@ -89,7 +89,9 @@ func listDecisoesOwn(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := repository.DB.Query(
 		`SELECT id, marketing, ped, suporte, seguranca, expansao, empresa_id, ciclo_id
-		 FROM decisoes WHERE empresa_id=$1`,
+	 	FROM decisoes
+	 	WHERE empresa_id=$1
+	 	ORDER BY ciclo_id ASC`,
 		empresaID,
 	)
 	if err != nil {
@@ -228,7 +230,10 @@ func deleteDecisaoOwn(w http.ResponseWriter, r *http.Request, rawID string) {
 // ---------------------------------------------------------------------------
 
 func listDecisoes(w http.ResponseWriter, r *http.Request) {
-	rows, _ := repository.DB.Query(`SELECT id, marketing, ped, suporte, seguranca, expansao, empresa_id, ciclo_id FROM decisoes`)
+	rows, _ := repository.DB.Query(`
+		SELECT id, marketing, ped, suporte, seguranca, expansao, empresa_id, ciclo_id
+		FROM decisoes
+		ORDER BY ciclo_id ASC`)
 	defer rows.Close()
 
 	var list []entities.Decisao

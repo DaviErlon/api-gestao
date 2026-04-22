@@ -195,9 +195,15 @@ func getPostOwn(w http.ResponseWriter, r *http.Request, rawID string) {
 	postID, _ := strconv.Atoi(rawID)
 	userID, _ := callerID(r)
 
+	empresaID, err := empresaIDFromContext(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var p entities.Post
 
-	err := repository.DB.QueryRow(`
+	err = repository.DB.QueryRow(`
 		SELECT 
 			p.id,
 			p.content,
@@ -207,8 +213,8 @@ func getPostOwn(w http.ResponseWriter, r *http.Request, rawID string) {
 			p.posted_at
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
-		WHERE p.id=$1
-	`, postID).Scan(
+		WHERE p.id = $1 AND u.empresa_id = $2
+	`, postID, empresaID).Scan(
 		&p.ID,
 		&p.Content,
 		&p.AuthorID,
@@ -218,13 +224,12 @@ func getPostOwn(w http.ResponseWriter, r *http.Request, rawID string) {
 	)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "post não encontrado", http.StatusNotFound)
 		return
 	}
 
 	_ = enrichPostWithLikes(&p, userID)
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(p)
 }
 
@@ -264,7 +269,6 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 
 func toggleLikeOnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 	idStr := strings.Split(rawID, "/")[0]
-
 	postID, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "ID inválido", http.StatusBadRequest)
@@ -274,6 +278,31 @@ func toggleLikeOnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 	userID, ok := callerID(r)
 	if !ok {
 		http.Error(w, "não autenticado", http.StatusUnauthorized)
+		return
+	}
+
+	empresaID, err := empresaIDFromContext(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	var exists bool
+	err = repository.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1
+			FROM posts p
+			JOIN users u ON u.id = p.author_id
+			WHERE p.id = $1 AND u.empresa_id = $2
+		)
+	`, postID, empresaID).Scan(&exists)
+
+	if err != nil {
+		http.Error(w, "erro interno", http.StatusInternalServerError)
+		return
+	}
+
+	if !exists {
+		http.Error(w, "post não encontrado", http.StatusNotFound)
 		return
 	}
 
@@ -308,11 +337,24 @@ func toggleLikeOnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 func togglePinOnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 	postID, _ := strconv.Atoi(strings.Split(rawID, "/")[0])
 
-	repository.DB.Exec(`
+	empresaID, err := empresaIDFromContext(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	_, err = repository.DB.Exec(`
 		UPDATE posts
 		SET pin = NOT pin
-		WHERE id = $1
-	`, postID)
+		WHERE id = $1 AND author_id IN (
+			SELECT id FROM users WHERE empresa_id = $2
+		)
+	`, postID, empresaID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -324,9 +366,23 @@ func togglePinOnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 func deleteOwnPost(w http.ResponseWriter, r *http.Request, rawID string) {
 	postID, _ := strconv.Atoi(rawID)
 
-	repository.DB.Exec(`
-		DELETE FROM posts WHERE id=$1
-	`, postID)
+	empresaID, err := empresaIDFromContext(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	_, err = repository.DB.Exec(`
+		DELETE FROM posts
+		WHERE id = $1 AND author_id IN (
+			SELECT id FROM users WHERE empresa_id = $2
+		)
+	`, postID, empresaID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -1,7 +1,45 @@
 <div class="content-card">
     <div class="module-header">
         <div class="module-title">Ciclos</div>
-        <button id="createCicloBtn">Criar Ciclo</button>
+        <button id="createCicloBtn" class="module-btn">Criar Ciclo</button>
     </div>
-    <div id="ciclosContainer" class="item-list"></div>
+
+    <div id="ciclosContainer" class="ciclos-grid"></div>
+
+    <div id="ciclosMessage" class="message"></div>
+</div>
+
+<!-- MODAL VISUALIZAÇÃO CICLO -->
+<div id="cicloModal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3 id="cicloModalTitle">Ciclo</h3>
+        <div id="cicloModalContent"></div>
+        <div class="modal-actions">
+            <button id="closeCicloModal" class="modal-cancel">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CRIAÇÃO CICLO -->
+<div id="createCicloModal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3>Criar Ciclo</h3>
+
+        <input id="cicloRodada" type="number" placeholder="Rodada" />
+        <input id="cicloSaldo" type="number" placeholder="Saldo" />
+        <input id="cicloDivida" type="number" placeholder="Dívida" />
+        <input id="cicloJuros" type="number" placeholder="Juros" />
+        <input id="cicloClientes" type="number" placeholder="Clientes" />
+        <input id="cicloMarket" type="number" placeholder="Market Share" />
+        <input id="cicloTech" type="number" placeholder="Tech" />
+        <input id="cicloReputacao" type="number" placeholder="Reputação" />
+        <input id="cicloSeguranca" type="number" placeholder="Segurança" />
+        <input id="cicloNps" type="number" placeholder="NPS" />
+        <input id="cicloValuation" type="number" placeholder="Valuation" />
+
+        <div class="modal-actions">
+            <button id="cancelCreateCiclo" class="modal-cancel">Cancelar</button>
+            <button id="submitCreateCiclo" class="modal-submit">Criar</button>
+        </div>
+    </div>
 </div>

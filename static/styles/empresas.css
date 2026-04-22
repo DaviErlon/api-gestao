@@ -1,28 +1,64 @@
-/* ============================================================
-   empresas.css — estilo do módulo de empresas
-   ============================================================ */
+/* GRID */
+.empresas-grid {
+    display: flex;
+    flex-direction: column;
 
-.item-list {
-    display: grid;
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
 }
 
-.item-card {
-    background: #ffffff;
-    border: 1px solid #e7e8f1;
+/* CARD */
+.empresa-card {
+    background: #f8f9fc;
+    border: 1px solid #ececf5;
     border-radius: var(--radius-card);
-    padding: 1.5rem;
-    box-shadow: 0 10px 25px rgba(30, 30, 47, 0.05);
+
+    padding: 16px;
+    height: 120px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
-.item-card-title {
-    font-size: 1rem;
+/* NOME */
+.empresa-name {
+    font-weight: 600;
+    font-size: 1.2rem;
     color: var(--color-text-main);
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    line-height: 1.3;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.item-card-meta {
+/* ID pequeno (mais discreto) */
+.empresa-id {
+    font-size: 0.75rem;
     color: var(--color-text-muted);
-    font-size: 0.95rem;
 }
+
+/* MENSAGEM */
+.message {
+    margin-top: 1rem;
+    padding: 10px 16px;
+    border-radius: var(--radius-btn);
+    font-size: 0.85rem;
+    text-align: center;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.message.error {
+    background-color: #ffe6e6;
+    color: #c7362b;
+    border-left: 4px solid #c7362b;
+}
+
+.message.success {
+    background-color: #e6ffed;
+    color: #2c6e3c;
+    border-left: 4px solid #2c6e3c;
+}
+

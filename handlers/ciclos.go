@@ -75,7 +75,7 @@ func listCiclosOwn(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.Ciclo
+	list := []entities.Ciclo{}
 	for rows.Next() {
 		var c entities.Ciclo
 		if err := rows.Scan(

@@ -1,3 +1,4 @@
+(function() {
 const PROFILE_API = "/api/user/users";
 
 // =========================================================
@@ -11,22 +12,6 @@ function initProfile() {
 
 window.initProfile = initProfile;
 
-function showMessage(text, type = "error") {
-    const el = document.getElementById("profileMessage");
-    if (!el) return;
-
-    el.textContent = text;
-    el.className = `message ${type}`;
-
-    // fade-in simples
-    el.style.opacity = "1";
-
-    // opcional: sumir depois de 4s
-    setTimeout(() => {
-        el.style.opacity = "0.8";
-    }, 4000);
-}
-
 // =========================================================
 // GET USER
 // =========================================================
@@ -39,9 +24,7 @@ async function loadProfile() {
 
     try {
         const res = await fetch(`${PROFILE_API}/${userId}`, {
-            headers: {
-                "Authorization": "Bearer " + localStorage.getItem("auth_token")
-            }
+            headers: authHeaders()
         });
 
         if (!res.ok) throw new Error("Erro ao carregar perfil");
@@ -56,7 +39,7 @@ async function loadProfile() {
 
     } catch (err) {
         console.error(err);
-        showMessage("Erro ao carregar perfil");
+        showMessage("profileMessage", "Erro ao carregar perfil", "error");
     }
 }
 
@@ -89,10 +72,7 @@ function setupProfileForm() {
         try {
             const res = await fetch(PROFILE_API, {
                 method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + localStorage.getItem("auth_token")
-                },
+                headers: authHeaders(),
                 body: JSON.stringify({
                     name,
                     login,
@@ -113,7 +93,7 @@ function setupProfileForm() {
                 throw new Error(errMsg);
             }
 
-            showMessage("Perfil atualizado com sucesso", "success");
+            showMessage("profileMessage", "Perfil atualizado com sucesso", "success");
 
             // limpa campos sensíveis
             document.getElementById("profilePasswordInput").value = "";
@@ -121,9 +101,11 @@ function setupProfileForm() {
 
         } catch (err) {
             console.error(err);
-            showMessage(err.message || "Erro inesperado");
+            showMessage("profileMessage", err.message || "Erro inesperado", "error");
         } finally {
             btn.disabled = true;
         }
     };
 }
+
+})();

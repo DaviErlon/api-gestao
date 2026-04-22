@@ -1,4 +1,5 @@
-const API = "/api/user/posts";
+(function() {
+const API_POSTS = "/api/user/posts";
 
 // =========================================================
 // STATE PAGINAÇÃO (com persistência)
@@ -6,25 +7,6 @@ const API = "/api/user/posts";
 let currentPage = parseInt(localStorage.getItem("posts_page")) || 1;
 let limit = 10;
 let hasNext = false;
-
-// =========================================================
-// AUTH
-// =========================================================
-
-function authHeaders() {
-    return {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + localStorage.getItem("auth_token")
-    };
-}
-
-function getUser() {
-    try {
-        return JSON.parse(localStorage.getItem("user_payload")) || {};
-    } catch {
-        return {};
-    }
-}
 
 // =========================================================
 // INIT
@@ -46,7 +28,7 @@ async function loadPosts(page = 1) {
     const pagination = document.getElementById("pagination");
 
     try {
-        const res = await fetch(`${API}?page=${page}&limit=${limit}`, {
+        const res = await fetch(`${API_POSTS}?page=${page}&limit=${limit}`, {
             method: "GET",
             headers: authHeaders()
         });
@@ -70,11 +52,10 @@ async function loadPosts(page = 1) {
             container.appendChild(createPostElement(post));
         });
 
-        renderPagination(pagination);
+        renderPaginationUI(pagination);
 
     } catch (err) {
         console.error(err);
-        container.innerHTML = "<p>Erro ao carregar posts</p>";
     }
 }
 
@@ -82,26 +63,8 @@ async function loadPosts(page = 1) {
 // PAGINAÇÃO UI
 // =========================================================
 
-function renderPagination(container) {
-    if (!container) return;
-
-    container.innerHTML = `
-        <button class="page-btn" ${currentPage === 1 ? "disabled" : ""} id="prevPage">
-            ◀
-        </button>
-
-        <span class="page-number">${currentPage}</span>
-
-        <button class="page-btn" ${!hasNext ? "disabled" : ""} id="nextPage">
-            ▶
-        </button>
-    `;
-
-    const prev = document.getElementById("prevPage");
-    const next = document.getElementById("nextPage");
-
-    if (prev) prev.onclick = () => loadPosts(currentPage - 1);
-    if (next) next.onclick = () => loadPosts(currentPage + 1);
+function renderPaginationUI(container) {
+    renderPagination("pagination", currentPage, hasNext, loadPosts);
 }
 
 // =========================================================
@@ -117,28 +80,8 @@ function setupCreatePost() {
 
     if (!btn || !modal) return;
 
-    function open() {
-        modal.classList.remove("hidden");
-        document.body.style.overflow = "hidden";
-        textarea.value = "";
-        textarea.focus();
-    }
-
-    function close() {
-        modal.classList.add("hidden");
-        document.body.style.overflow = "auto";
-    }
-
-    btn.onclick = open;
-    cancel.onclick = close;
-
-    modal.onclick = (e) => {
-        if (e.target === modal) close();
-    };
-
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") close();
-    });
+    // Setup toggle modal
+    setupModalToggle("createPostBtn", "postModal", "cancelPost");
 
     submit.onclick = async () => {
         const content = textarea.value.trim();
@@ -147,7 +90,7 @@ function setupCreatePost() {
         submit.disabled = true;
 
         try {
-            const res = await fetch(API, {
+            await fetch(API_POSTS, {
                 method: "POST",
                 headers: authHeaders(),
                 body: JSON.stringify({
@@ -156,9 +99,8 @@ function setupCreatePost() {
                 })
             });
 
-            if (!res.ok) throw new Error("erro ao criar post");
-
-            close();
+            closeModal("postModal");
+            textarea.value = "";
 
             // 🔥 mantém na mesma página
             loadPosts(currentPage);
@@ -169,6 +111,14 @@ function setupCreatePost() {
             submit.disabled = false;
         }
     };
+
+    // Limpa o textarea ao abrir o modal
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal && !modal.classList.contains("hidden")) {
+            textarea.value = "";
+            textarea.focus();
+        }
+    });
 }
 
 // =========================================================
@@ -235,7 +185,7 @@ function createPostElement(post) {
 
 async function togglePin(id) {
     try {
-        await fetch(`${API}/${id}/pin`, {
+        await fetch(`${API_POSTS}/${id}/pin`, {
             method: "PUT",
             headers: authHeaders()
         });
@@ -255,7 +205,7 @@ async function toggleLike(id, btn) {
     try {
         btn.disabled = true;
 
-        await fetch(`${API}/${id}/like`, {
+        await fetch(`${API_POSTS}/${id}/like`, {
             method: "PUT",
             headers: authHeaders()
         });
@@ -285,7 +235,7 @@ async function deletePost(id) {
     if (!confirm("Deseja deletar este post?")) return;
 
     try {
-        await fetch(`${API}/${id}`, {
+        await fetch(`${API_POSTS}/${id}`, {
             method: "DELETE",
             headers: authHeaders()
         });
@@ -297,17 +247,5 @@ async function deletePost(id) {
     }
 }
 
-// =========================================================
-// HELPERS
-// =========================================================
+})();
 
-function formatDate(dateStr) {
-    return new Date(dateStr).toLocaleString("pt-BR");
-}
-
-function escapeHtml(str) {
-    return String(str)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
-}

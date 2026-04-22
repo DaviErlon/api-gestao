@@ -25,12 +25,12 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 INSERT INTO users (id, name, login, password, empresa_id) VALUES
-(1, 'Admin', 'admin@user', 'user@user', NULL),
-(2, 'Filipe', 'filipe@user', 'user@user', 4),
-(3, 'Daniel', 'daniel@user', 'user@user', 4),
-(4, 'Francisco', 'francisco@user', 'user@user', 4),
-(5, 'Rian', 'rian@user', 'user@user', 4),
-(6, 'Davi', 'davi@user', 'user@user', 4)
+(1, 'Admin', 'admin@user', '$2a$10$gEgTk6iDtPyVC7rrtm0AxuU10Brb5Im/tpAzo/gqF8ZOckGt4Nn0K', NULL),
+(2, 'Filipe', 'filipe@user', '$2a$10$Y6zZcrNp704iPD.8oQCLPe8QNZ8zPs5APafh9XYMosPxysijalzaS', 4),
+(3, 'Daniel', 'daniel@user', '$2a$10$rj2QkbQ4AI79McMW.8sb6OKPvuvfUbtXnRzIje0NkXYMSl3ba/DPi', 4),
+(4, 'Francisco', 'francisco@user', '$2a$10$xlArw5z6ystAnLyB6zPZeus3ijFq61w3Se88ma9eV.biO1AGn8C/O', 4),
+(5, 'Rian', 'rian@user', '$2a$10$hPQfHwiy/A/lqFi78jH6a.YpGIWO5EYN.AEQP1zglLf8sKdY.gauW', 4),
+(6, 'Davi', 'davi@user', '$2a$10$vH.L8qikHqmw1hJ1tKvgZOgmlcufbcFJ.c2sjGpTHfep4f0Pc0Jf2', 4)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS ciclos (

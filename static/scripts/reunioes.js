@@ -1,3 +1,4 @@
+(function() {
 /* ============================================================
    reunioes.js — módulo de reuniões
    ============================================================ */
@@ -55,9 +56,4 @@ function renderReunioes(container, list) {
     });
 }
 
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
+})();
