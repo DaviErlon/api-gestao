@@ -100,7 +100,7 @@ func listDecisoesOwn(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.Decisao
+	list := []entities.Decisao{}
 	for rows.Next() {
 		var d entities.Decisao
 		rows.Scan(&d.ID, &d.Marketing, &d.PeD, &d.Suporte, &d.Seguranca, &d.Expansao, &d.EmpresaID, &d.CicloID)
@@ -236,7 +236,7 @@ func listDecisoes(w http.ResponseWriter, r *http.Request) {
 		ORDER BY ciclo_id ASC`)
 	defer rows.Close()
 
-	var list []entities.Decisao
+	list := []entities.Decisao{}
 	for rows.Next() {
 		var d entities.Decisao
 		rows.Scan(&d.ID, &d.Marketing, &d.PeD, &d.Suporte, &d.Seguranca, &d.Expansao, &d.EmpresaID, &d.CicloID)

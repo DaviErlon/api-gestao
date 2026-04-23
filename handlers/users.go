@@ -142,7 +142,7 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.User
+	list := []entities.User{}
 	for rows.Next() {
 		var u entities.User
 		if err := rows.Scan(&u.ID, &u.Name, &u.Login, &u.EmpresaID); err != nil {

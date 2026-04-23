@@ -150,7 +150,7 @@ func listPostsOwn(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.Post
+	list := []entities.Post{}
 
 	for rows.Next() {
 		var p entities.Post
@@ -415,7 +415,7 @@ func listPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.Post
+	list := []entities.Post{}
 
 	for rows.Next() {
 		var p entities.Post

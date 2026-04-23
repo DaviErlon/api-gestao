@@ -378,7 +378,7 @@ func deleteReuniao(w http.ResponseWriter, r *http.Request, rawID string) {
 // ---------------------------------------------------------------------------
 
 func writeList(w http.ResponseWriter, rows *sql.Rows) {
-	var list []entities.Reuniao
+	list := []entities.Reuniao{}
 
 	for rows.Next() {
 		var re entities.Reuniao

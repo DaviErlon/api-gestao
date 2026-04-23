@@ -329,6 +329,73 @@
 .empty-decision-state p {
     color: var(--color-text-muted);
     font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.add-decisao-btn {
+    background: #2ed573;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s ease;
+}
+
+.add-decisao-btn:hover {
+    background: #27c464;
+}
+
+.add-decisao-btn:active {
+    transform: scale(0.98);
+}
+
+/* Remove spinners dos inputs number */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Modal do ciclo - aumenta fonte e largura */
+#cicloModal .modal-card {
+    width: 800px;
+    font-size: 1.1rem;
+}
+
+#cicloModal .modal-card h3 {
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+}
+
+#cicloModal .detail-section h4 {
+    font-size: 1.05rem;
+}
+
+#cicloModal .detail-row {
+    font-size: 0.95rem;
+}
+
+#cicloModal .detail-row span {
+    font-size: 0.9rem;
+}
+
+#cicloModal .decision-panel h4 {
+    font-size: 1.1rem;
+}
+
+#cicloModal .decision-label {
+    font-size: 0.85rem;
+}
+
+#cicloModal .decision-value {
+    font-size: 1.1rem;
 }
 
 /* ============================================================

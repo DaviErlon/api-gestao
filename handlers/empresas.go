@@ -55,7 +55,7 @@ func listEmpresas(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var list []entities.Empresa
+	list := []entities.Empresa{}
 	for rows.Next() {
 		var e entities.Empresa
 		if err := rows.Scan(&e.ID, &e.Name); err != nil {
